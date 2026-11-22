@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edgar Brain</title>
+<style>
+body{margin:0;background:#050505;color:#ddd;font:13px ui-monospace,Menlo,monospace}
+header{padding:10px 14px;color:#fc0;letter-spacing:2px;font-weight:700;display:flex;justify-content:space-between}
+#st{color:#4f8;font-weight:400;letter-spacing:0}
+canvas{width:100%;height:56vh;display:block}
+#list{padding:0 12px 20px}
+a{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #222;color:#ddd;text-decoration:none}
+.f{color:#fc0;width:46px}.t{color:#4f8;width:48px}.s{color:#888;margin-left:auto;font-size:11px;text-align:right}
+</style></head><body>
+<header><span>EDGAR BRAIN</span><span id="st">loading…</span></header>
+<canvas id="c"></canvas><div id="list"></div>
+<script>
+const COL={"Energy":"#ff5a3c","Materials":"#7be37b","Industrials":"#58a6ff","Consumer Discretionary":"#ff9a3c","Consumer Staples":"#ffd23c","Health Care":"#ff5fa8","Financials":"#4fd8e8","Information Technology":"#c06bff","Communication":"#6ea8ff","Utilities":"#9aa","Real Estate":"#e8d06a"};
+const SEC=Object.keys(COL),cv=document.getElementById("c"),g=cv.getContext("2d");
+let W,H,D=[],P=[];
+function size(){const r=devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*r;cv.height=H*r;g.setTransform(r,0,0,r,0,0)}
+addEventListener("resize",size);size();
+const pos=s=>({x:W*0.78,y:30+(H-60)*SEC.indexOf(s)/(SEC.length-1)});
+async function load(){
+ try{const j=await(await fetch("/api/filings")).json();if(j.error)throw j.error;
+  D=j.filings;P=D.map((f,i)=>({f,t:Math.random(),sp:.003+Math.random()*.004}));
+  document.getElementById("st").textContent="LIVE · "+D.length+" filings · "+new Date(j.at).toLocaleTimeString();
+  document.getElementById("list").innerHTML=D.map(f=>`<a href="${f.url}" target="_blank"><span class="f">${f.form}</span><span class="t">${f.ticker||"—"}</span><span>${f.name.slice(0,26)}</span><span class="s">${f.sector.replace("Information Technology","IT").replace("Consumer ","Cons ")}</span></a>`).join("");
+ }catch(e){document.getElementById("st").textContent="error: "+e}
+}
+function bez(a,b,t){const c1={x:a.x+(b.x-a.x)*.5,y:a.y},c2={x:a.x+(b.x-a.x)*.5,y:b.y},u=1-t;
+ return{x:u*u*u*a.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*b.x,y:u*u*u*a.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*b.y}}
+function draw(){
+ g.clearRect(0,0,W,H);const o={x:W*.12,y:H/2},cnt={};D.forEach(f=>cnt[f.sector]=(cnt[f.sector]||0)+1);
+ D.forEach(f=>{const e=pos(f.sector);g.strokeStyle=COL[f.sector]+"55";g.beginPath();g.moveTo(o.x,o.y);g.bezierCurveTo(o.x+(e.x-o.x)/2,o.y,o.x+(e.x-o.x)/2,e.y,e.x,e.y);g.stroke()});
+ P.forEach(p=>{p.t=(p.t+p.sp)%1;const q=bez(o,pos(p.f.sector),p.t);g.fillStyle=COL[p.f.sector];g.beginPath();g.arc(q.x,q.y,2.2,0,7);g.fill()});
+ g.fillStyle="#fc0";g.shadowColor="#fc0";g.shadowBlur=18;g.beginPath();g.arc(o.x,o.y,7,0,7);g.fill();g.shadowBlur=0;
+ g.font="11px ui-monospace,monospace";g.fillText("CRAWLER",o.x-24,o.y+22);
+ SEC.forEach(s=>{const e=pos(s);g.fillStyle=COL[s];g.beginPath();g.arc(e.x,e.y,4,0,7);g.fill();
+  g.fillText((s.replace("Information Technology","IT").replace("Consumer ","Cons "))+" "+(cnt[s]||""),e.x+9,e.y+4)});
+ requestAnimationFrame(draw)}
+load();setInterval(load,60000);draw();
+</script></body></html>
